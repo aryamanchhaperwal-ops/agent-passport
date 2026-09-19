@@ -1,10 +1,65 @@
 # AgentPassport
 
-**Local reference implementation / testbed for runtime authorization of AI-agent delegation.**
+**Runtime Security Infrastructure for Autonomous AI Agents**
 
-**This is a local reference implementation/testbed, not a production authorization system.**
-It runs entirely on your machine, contacts no real external systems, and every "tool" is a
-local simulation. Nothing here connects to real payments, mail, calendars, or cloud storage.
+> AI PROPOSES. SECURITY VERIFIES. SYSTEM EXECUTES.
+
+AgentPassport is **a working reference implementation and adversarial testbed for runtime
+authorization and delegation security in autonomous AI-agent systems.** It explores the
+practical enforcement of **identity, delegation, scope, signature verification, revocation,
+and tool authorization** for AI agents that call tools on a user's behalf.
+
+**This is a local, simulated environment** — no real banking, payment, mail, calendar, or
+cloud systems are contacted, and every tool is an in-process simulation. It is not a
+production authorization system.
+
+## The problem
+
+An autonomous agent (or a chain of them) can propose arbitrary tool calls — including ones
+no human ever intended to permit. Prompt injection, compromise, or plain malfunction can
+turn a helpful planner into a liability. AgentPassport's answer is structural: the LLM may
+propose, but a **deterministic cryptographic layer independently decides**, and tools run
+only when that layer says yes.
+
+## The interactive dashboard (Phase 3 MVP)
+
+```bash
+# terminal 1 - backend
+uvicorn app.main:app --port 8000
+# terminal 2 - dashboard
+cd frontend && npm install && npm run dev
+```
+
+Open **http://localhost:3000**. The single-screen security console shows:
+
+- **Delegation chain** — Human → Agent A → Agent B → Agent C → Security Gateway → tools,
+  with each node's narrowed scope and live status (ACTIVE / REVOKED / BLOCKED) and
+  green/red authority links.
+- **Live security demo** — five buttons backed by the real gateway: legitimate request,
+  scope-escalation attack, credential-tampering attack, revoke Agent B, reset demo.
+- **Security decision panel** — the actual backend verdict broken into per-stage checks
+  (identity, chain, signature, revocation, expiry, scope), the machine-readable reason,
+  and the physical fact that matters: `Tool execution: EXECUTED / NOT EXECUTED`.
+- **Audit feed** — delegations and every ALLOW/DENY, recorded by the backend.
+- **Architecture explainer** — the verification pipeline for non-specialist judges.
+
+The full judge flow takes ~2 minutes: allow → deny (escalation) → deny (tampering) →
+deny (revocation) → reset → repeat. Every result comes from the same Phase 1 verifier;
+the UI only renders what the backend decided.
+
+Developer API remains at **http://localhost:8000/docs** (Swagger).
+
+## What is in the repository
+
+| Path | Contents |
+|---|---|
+| `app/core/` | Phase 1 cryptographic core: Ed25519 identities, canonical signed delegations, deterministic chain verifier, scope policy, revocation registry |
+| `app/agents/`, `app/llm/`, `app/tools/`, `app/gateway/`, `app/audit/` | Phase 2 runtime: three agents, LLM providers (mock/ollama/openrouter), simulated tools, the SecurityGateway, audit events |
+| `app/main.py` | FastAPI: Phase 1 `/verify`, Phase 2 agent/tool endpoints, Phase 3 `/demo/*` dashboard API |
+| `app/demo_state.py` | Replayable demo world over the existing runtime (no security logic) |
+| `frontend/` | Next.js + TypeScript + Tailwind security console |
+| `demo/` | CLI demos: `basic_chain.py`, `phase2_demo.py`, `attack_demo.py` |
+| `tests/` | 178 tests: crypto core, gateway enforcement, attacks, end-to-end, demo API |
 
 ```
 AI AGENT PROPOSES ACTION
@@ -163,21 +218,24 @@ All providers fail closed: if Ollama is down, OpenRouter is unconfigured, the mo
 out, or the output is garbage, the runtime proceeds with **no proposal** — and governance
 continues, because authorization never depended on the LLM.
 
-## Running
+## Local setup & running everything
 
-Requires Python 3.12+.
+Requires Python 3.12+ and Node 18+.
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-pytest                        # full suite (Phase 1 + Phase 2)
+cd frontend && npm install && cd -   # one-time dashboard install
+
+pytest                        # full suite (Phases 1-3)
 python demo/basic_chain.py    # Phase 1 crypto demo
-python demo/phase2_demo.py    # full agent + gateway demo
+python demo/phase2_demo.py    # agent + gateway demo
 python demo/attack_demo.py    # six attack scenarios
 
-uvicorn app.main:app --port 8000   # localhost only
+uvicorn app.main:app --port 8000      # backend (localhost only)
+cd frontend && npm run dev            # dashboard on :3000
 ```
 
 API endpoints:
@@ -190,6 +248,12 @@ API endpoints:
 - `GET  /audit` — the in-memory audit log
 - `GET  /agents` — public agent descriptions
 - `GET  /security/status` — composition + enforcement status
+- `GET  /demo/state` — full dashboard snapshot (agents, links, stats, events)
+- `POST /demo/legitimate` — Agent C → calendar.read via the real gateway
+- `POST /demo/attack/scope-escalation` — Agent C → payments.transfer
+- `POST /demo/attack/signature-tampering` — tampered credential via the real verifier
+- `POST /demo/revoke-specialist` — revoke Agent B via the existing registry
+- `POST /demo/reset` — rebuild the demo world for a repeatable show
 
 ## Attack scenarios (all demonstrated in `demo/attack_demo.py` and tests)
 
@@ -236,3 +300,17 @@ Defended (Phase 1 mechanisms, enforced at the gateway):
 - The anchor key is generated at process start; there is no persistent identity layer,
   key rotation, or revocation distribution.
 - Nothing here has been audited. **Not production-ready.**
+
+## Test results
+
+`pytest` — 178 passed, 0 failed, 0 skipped (Python 3.12). Coverage includes the
+cryptographic core (signatures, canonicalization, attenuation, validity inheritance),
+gateway enforcement (denied tools provably never execute, via execute counters), the six
+attack scenarios, end-to-end Human→A→B→C flows, the Phase 3 demo API, and the full
+dashboard sequence including reset-and-repeat.
+
+## Future work
+
+Proof-of-possession on requests (requester signs with the leaf key), persistent
+revocation/audit storage, use-once nonce registry, key rotation and revocation
+distribution, multi-anchor policy, and a decision-stream WebSocket for live dashboards.

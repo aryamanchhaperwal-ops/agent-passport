@@ -35,6 +35,7 @@ from app.core.identity import AgentIdentity
 from app.core.models import VerifyRequest
 from app.core.policy import TrustAnchor
 from app.core.verifier import VerificationOutcome, verify_chain
+from app.demo_state import DemoState
 from app.gateway.security_gateway import SecurityGateway
 from app.tools.registry import ToolRegistry, default_registry
 
@@ -193,6 +194,48 @@ def create_app(
                 "-> ALLOW ? tool : never"
             ),
         }
+
+    # ------------------------------------------------------------------
+    # Phase 3 demo surface (dashboard). Every button in the UI hits one of
+    # these; each one routes through the SAME runtime/gateway/verifier as
+    # the endpoints above. The UI renders results; it never computes them.
+    # ------------------------------------------------------------------
+    demo_holder = {"state": DemoState()}
+
+    def _demo() -> DemoState:
+        return demo_holder["state"]
+
+    @app.get("/demo/state")
+    def demo_state() -> dict:
+        """Full dashboard state snapshot (agents, links, stats, events)."""
+        return _demo().snapshot()
+
+    @app.post("/demo/legitimate")
+    def demo_legitimate() -> dict:
+        """Agent C -> calendar.read through the real gateway."""
+        return _demo().run_legitimate()
+
+    @app.post("/demo/attack/scope-escalation")
+    def demo_scope_escalation() -> dict:
+        """Agent C -> payments.transfer through the real gateway."""
+        return _demo().run_scope_escalation()
+
+    @app.post("/demo/attack/signature-tampering")
+    def demo_signature_tampering() -> dict:
+        """Tamper with C's signed credential, submit through the real
+        gateway; the Phase 1 verifier detects the modification."""
+        return _demo().run_signature_tampering()
+
+    @app.post("/demo/revoke-specialist")
+    def demo_revoke_specialist() -> dict:
+        """Revoke Agent B's delegation via the existing registry."""
+        return _demo().revoke_specialist()
+
+    @app.post("/demo/reset")
+    def demo_reset() -> dict:
+        """Rebuild the entire demo world (fresh anchor/chain/audit)."""
+        demo_holder["state"] = DemoState()
+        return demo_holder["state"].snapshot()
 
     return app
 
