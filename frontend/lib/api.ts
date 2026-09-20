@@ -94,8 +94,20 @@ export type GatewayResult = {
   effective_scopes: string[];
 };
 
+const PRODUCTION_API_BASE = "https://agentpassport-api.aryamanchhaperwal.workers.dev";
+
+function apiBaseUrl(): string {
+  const configured = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+  if (configured) return configured.replace(/\/$/, "");
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1") return "http://127.0.0.1:8000";
+  }
+  return PRODUCTION_API_BASE;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/api${path}`, {
+  const response = await fetch(`${apiBaseUrl()}${path}`, {
     ...init,
     headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
     cache: "no-store",
