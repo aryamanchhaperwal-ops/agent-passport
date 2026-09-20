@@ -246,10 +246,47 @@ def create_app(
 # The anchor key is generated at process start (never committed, never
 # logged); revocations and audit events are in-memory and die with the
 # process — exactly right for a local testbed.
+#
+# Creation is deferred to the first ASGI call instead of module import:
+# the Cloudflare Workers Python runtime rejects Ed25519 key generation
+# during deploy-time validation (which imports this module) but supports
+# it at request time. Locally this behaves identically.
 # ---------------------------------------------------------------------------
-ANCHOR = TrustAnchor(AgentIdentity.generate(agent_id="human:root"))
-REVOCATION_REGISTRY = InMemoryRevocationRegistry()
+ANCHOR: TrustAnchor | None = None
+REVOCATION_REGISTRY: InMemoryRevocationRegistry | None = None
 
-app = create_app(ANCHOR, REVOCATION_REGISTRY)
+
+def _bootstrap_singletons() -> tuple[TrustAnchor, InMemoryRevocationRegistry]:
+    """Create THE one trust anchor + revocation registry, idempotently."""
+    global ANCHOR, REVOCATION_REGISTRY
+    if ANCHOR is None or REVOCATION_REGISTRY is None:
+        ANCHOR = TrustAnchor(AgentIdentity.generate(agent_id="human:root"))
+        REVOCATION_REGISTRY = InMemoryRevocationRegistry()
+    return ANCHOR, REVOCATION_REGISTRY
+
+
+class _LazyApp:
+    """ASGI wrapper that builds the real app on the first request.
+
+    Keeps `from app.main import app` and `uvicorn app.main:app` working
+    while moving trust-anchor key generation (and everything constructed
+    with it) out of module import. The single-threaded event loop makes
+    the lazy build race-free.
+    """
+
+    def __init__(self) -> None:
+        self._inner: FastAPI | None = None
+
+    def _build(self) -> FastAPI:
+        if self._inner is None:
+            anchor, revocations = _bootstrap_singletons()
+            self._inner = create_app(anchor, revocations)
+        return self._inner
+
+    async def __call__(self, scope, receive, send) -> None:
+        await self._build()(scope, receive, send)
+
+
+app = _LazyApp()
 
 __all__ = ["app", "create_app", "ANCHOR", "REVOCATION_REGISTRY"]

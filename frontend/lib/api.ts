@@ -118,9 +118,11 @@ export const api = {
   legitimate: () => request<RunResponse>("/demo/legitimate", { method: "POST" }),
   scopeEscalation: () => request<RunResponse>("/demo/attack/scope-escalation", { method: "POST" }),
   signatureTampering: () => request<RunResponse>("/demo/attack/signature-tampering", { method: "POST" }),
-  revokeSpecialist: () => request<{ revoked_delegation_id: string; state: DemoSnapshot }>(
-    "/demo/revoke-specialist", { method: "POST" },
-  ),
+  revokeSpecialist: () => request<{
+    revoked_delegation_id: string;
+    result: GatewayResult;
+    state: DemoSnapshot;
+  }>("/demo/revoke-specialist", { method: "POST" }),
   reset: () => request<DemoSnapshot>("/demo/reset", { method: "POST" }),
 };
 

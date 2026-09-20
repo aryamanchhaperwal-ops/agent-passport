@@ -1,0 +1,8 @@
+name = "agentpassport-api"
+main = "worker.py"
+compatibility_date = "2026-08-28"
+compatibility_flags = ["python_workers"]
+
+# Deployment note: FastAPI/pydantic/cryptography are provided by the Workers
+# Python runtime (Pyodide-compatible packages). Local package management for
+# the worker uses the repository pyproject.toml dependencies.

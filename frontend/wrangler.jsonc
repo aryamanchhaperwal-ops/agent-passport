@@ -1,0 +1,19 @@
+{
+  // AgentPassport dashboard — static Next.js export + /api proxy.
+  "name": "agentpassport",
+  "main": "worker.js",
+  "compatibility_date": "2026-08-28",
+  "assets": {
+    "directory": "./out",
+    "binding": "ASSETS"
+  },
+  // Direct Worker-to-Worker invocation of the FastAPI backend. A service
+  // binding is required because worker subrequests to *.workers.dev
+  // hostnames do not route to the target Worker.
+  "services": [
+    {
+      "binding": "API",
+      "service": "agentpassport-api"
+    }
+  ]
+}

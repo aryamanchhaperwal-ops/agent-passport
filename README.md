@@ -49,6 +49,41 @@ the UI only renders what the backend decided.
 
 Developer API remains at **http://localhost:8000/docs** (Swagger).
 
+## Deployment (Cloudflare Workers)
+
+The verified MVP is deployed as two Cloudflare Workers — the architecture is unchanged,
+only deployment adapters were added:
+
+| Worker | What it runs | URL |
+|---|---|---|
+| `agentpassport-api` | The same FastAPI app (`app.main`) on a **Python Worker** (Workers ASGI runtime SDK); FastAPI/pydantic/cryptography vendored at deploy; Ed25519 verified working on the runtime |
+| `agentpassport` | The Next.js dashboard as a **static export** served from Workers Static Assets, with a tiny proxy Worker forwarding `/api/*` to the backend over a **service binding** |
+
+- Dashboard: https://agentpassport.aryamanchhaperwal.workers.dev
+- Backend API (health, `/docs` Swagger): https://agentpassport-api.aryamanchhaperwal.workers.dev
+
+Redeploying:
+
+```bash
+# backend (from repo root)
+uvx --from workers-py pywrangler deploy
+# dashboard (from frontend/)
+STATIC_EXPORT=1 npm run build && npx wrangler deploy
+```
+
+Deployment notes:
+
+- `app/main.py` bootstraps the trust anchor **lazily on the first request** instead of at
+  module import, because the Workers Python runtime forbids Ed25519 key generation during
+  deploy-time validation but supports it at request time. Local behavior is identical.
+- `frontend/worker.js` mirrors `next.config.mjs`'s dev `/api` rewrite; the browser keeps
+  talking to a single origin, so no CORS and no UI changes were needed.
+- Worker-to-worker traffic uses a service binding because subrequests to `*.workers.dev`
+  hostnames do not route to the target Worker.
+- Workers isolates are stateless per request: each demo button is a self-contained
+  scenario, and revocation is demonstrated atomically (revoke + re-attempt in one request)
+  so `REVOKED_DELEGATION` is deterministic on the deployed demo.
+
 ## What is in the repository
 
 | Path | Contents |
@@ -225,7 +260,7 @@ Requires Python 3.12+ and Node 18+.
 ```bash
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+pip install -e ".[dev]"   # or: pip install cryptography fastapi pydantic uvicorn pytest httpx
 
 cd frontend && npm install && cd -   # one-time dashboard install
 
@@ -288,7 +323,10 @@ Defended (Phase 1 mechanisms, enforced at the gateway):
 ## Security limitations
 
 - Local testbed: **no API authentication, no TLS, no persistence**; revocation and audit
-  die with the process. Do not expose beyond localhost.
+  die with the process. The Cloudflare deployment inherits all of this and is therefore a
+  **public, unauthenticated demo of a simulated environment**: every request gets a fresh
+  in-memory world (Workers isolates are stateless), every tool is a local simulation, and
+  no real system is ever contacted. Anyone can run the demo scenarios against it.
 - The runtime is the credential custodian: it hands each agent's chain to the gateway on
   the agent's behalf. A deployment must add proof-of-possession (requester signs the
   request with the leaf key) so a stolen agent_id alone is useless.

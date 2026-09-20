@@ -136,8 +136,19 @@ class DemoState:
                 "state": self.snapshot(scenario="signature_tampering")}
 
     def revoke_specialist(self) -> dict:
+        """Revoke Agent B's delegation, then immediately re-attempt C's
+        previously-authorized request through the real gateway.
+
+        The two steps are deliberately compound in ONE request: stateless
+        multi-isolate deployments (Cloudflare Workers) give no guarantee
+        that cross-request in-memory state is visible to the next request,
+        so the downstream effect of revocation must be demonstrated
+        atomically to stay deterministic. The decision comes from the same
+        gateway/verifier as every other request — no new security logic.
+        """
         did = self.runtime.revoke_specialist()
-        return {"revoked_delegation_id": did, "state": self.snapshot(scenario="revoked")}
+        response = self._run("calendar.read", {"days": 7}, "revoked")
+        return {"revoked_delegation_id": did, **response}
 
     # ------------------------------------------------------------------
     def _agent_status(self, agent_id: str) -> str:
