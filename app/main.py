@@ -86,7 +86,7 @@ def create_app(
     # SecurityGateway and deterministic verifier.
     allowed_origin_regex = os.getenv(
         "FRONTEND_ORIGIN_REGEX",
-        r"^https://([a-z0-9-]+\\.)*(workers\\.dev|netlify\\.app)$",
+        r"^https://([a-z0-9-]+\.)*(workers\.dev|netlify\.app)$",
     )
     app.add_middleware(
         CORSMiddleware,
