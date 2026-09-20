@@ -32,8 +32,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from app.agents.runtime import AgentRuntime
-from app.audit import AuditStore, tool_request_event
-from app.core.delegation import InMemoryRevocationRegistry, RevocationRegistry
+from app.audit import tool_request_event, AuditStore
+from app.repositories import DbAuditStore, DbRevocationRegistry
+from app.core.delegation import RevocationRegistry
 from app.core.identity import AgentIdentity
 from app.core.models import VerifyRequest
 from app.core.policy import TrustAnchor
@@ -101,7 +102,7 @@ def create_app(
     )
 
     registry = registry or default_registry()
-    audit_store = audit_store or AuditStore()
+    audit_store = audit_store or DbAuditStore()
     runtime = runtime or AgentRuntime.bootstrap(
         anchor=anchor, revocations=revocation_registry, audit=audit_store,
         registry=registry,
@@ -222,9 +223,11 @@ def create_app(
     # these; each one routes through the SAME runtime/gateway/verifier as
     # the endpoints above. The UI renders results; it never computes them.
     # ------------------------------------------------------------------
-    demo_holder = {"state": DemoState()}
+    demo_holder = {}
 
     def _demo() -> DemoState:
+        if "state" not in demo_holder:
+            demo_holder["state"] = DemoState()
         return demo_holder["state"]
 
     @app.get("/demo/state")
@@ -275,15 +278,15 @@ def create_app(
 # it at request time. Locally this behaves identically.
 # ---------------------------------------------------------------------------
 ANCHOR: TrustAnchor | None = None
-REVOCATION_REGISTRY: InMemoryRevocationRegistry | None = None
+REVOCATION_REGISTRY: DbRevocationRegistry | None = None
 
 
-def _bootstrap_singletons() -> tuple[TrustAnchor, InMemoryRevocationRegistry]:
+def _bootstrap_singletons() -> tuple[TrustAnchor, DbRevocationRegistry]:
     """Create THE one trust anchor + revocation registry, idempotently."""
     global ANCHOR, REVOCATION_REGISTRY
     if ANCHOR is None or REVOCATION_REGISTRY is None:
         ANCHOR = TrustAnchor(AgentIdentity.generate(agent_id="human:root"))
-        REVOCATION_REGISTRY = InMemoryRevocationRegistry()
+        REVOCATION_REGISTRY = DbRevocationRegistry()
     return ANCHOR, REVOCATION_REGISTRY
 
 

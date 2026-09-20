@@ -6,3 +6,8 @@ compatibility_flags = ["python_workers"]
 # Deployment note: FastAPI/pydantic/cryptography are provided by the Workers
 # Python runtime (Pyodide-compatible packages). Local package management for
 # the worker uses the repository pyproject.toml dependencies.
+#
+# Phase 4 Persistence Note: Standard synchronous SQLAlchemy engines are not
+# supported natively in Cloudflare Workers Python runtime. For production,
+# the persistence layer must be isolated, or a supported Cloudflare driver 
+# and Hyperdrive must be used.

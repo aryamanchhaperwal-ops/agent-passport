@@ -61,6 +61,22 @@ def revocation_registry() -> InMemoryRevocationRegistry:
     return InMemoryRevocationRegistry()
 
 
+@pytest.fixture(autouse=True)
+def db_cleanup():
+    """Ensure database is clean before each test to prevent cross-test contamination."""
+    from app.db.database import SessionLocal, engine
+    from app.db.models import Base, AgentRecord, DelegationRecord, RevocationRecord, AuditRecord
+    
+    # Create tables if they don't exist
+    Base.metadata.create_all(bind=engine)
+    
+    with SessionLocal() as session:
+        session.query(AuditRecord).delete()
+        session.query(RevocationRecord).delete()
+        session.query(DelegationRecord).delete()
+        session.query(AgentRecord).delete()
+        session.commit()
+
 class ChainBuilder:
     """Helper for constructing valid chains quickly in tests."""
 

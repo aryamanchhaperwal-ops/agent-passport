@@ -37,7 +37,15 @@ class AuditEvent(BaseModel):
     detail: str | None = None
 
 
-class AuditStore:
+from typing import Protocol
+
+class AuditStore(Protocol):
+    def record(self, event: AuditEvent) -> AuditEvent: ...
+    def all_events(self) -> list[AuditEvent]: ...
+    def count(self) -> int: ...
+    def clear(self) -> None: ...
+
+class InMemoryAuditStore(AuditStore):
     """Thread-safe-enough append-only in-memory event log."""
 
     def __init__(self) -> None:

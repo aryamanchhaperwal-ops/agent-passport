@@ -140,11 +140,12 @@ class TestGatewayIndependence:
         human = AgentIdentity.generate("human:root")
         from app.core.policy import TrustAnchor
         from app.core.delegation import DelegationBuilder
+        from app.audit import InMemoryAuditStore
 
         anchor = TrustAnchor(human)
         a = AgentIdentity.generate("planner")
         root = DelegationBuilder(anchor).issue_root(a, ["calendar.read"])
-        gateway = SecurityGateway(anchor, registry, AuditStore())
+        gateway = SecurityGateway(anchor, registry, InMemoryAuditStore())
         result = gateway.authorize_and_execute(a.agent_id, [root], "calendar.read")
         assert result.decision == "ALLOW"
         assert registry.get("calendar.read").execute_count == 1

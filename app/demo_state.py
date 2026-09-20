@@ -61,6 +61,17 @@ class DemoState:
     # ------------------------------------------------------------------
     def reset(self) -> dict:
         """Rebuild the world: fresh anchor, chain, tools, audit, revocations."""
+        from app.db.database import SessionLocal
+        from app.db.models import AgentRecord, DelegationRecord, RevocationRecord, AuditRecord
+        
+        # Clear database for clean demo state
+        with SessionLocal() as session:
+            session.query(AuditRecord).delete()
+            session.query(RevocationRecord).delete()
+            session.query(DelegationRecord).delete()
+            session.query(AgentRecord).delete()
+            session.commit()
+
         self._runtime = AgentRuntime.bootstrap(provider=MockProvider())
         self._last = None
         self._last_tamper = None

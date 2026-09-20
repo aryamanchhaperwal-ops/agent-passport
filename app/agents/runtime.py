@@ -16,10 +16,11 @@ from typing import Callable
 from app.agents.executor import Executor
 from app.agents.planner import Planner
 from app.agents.specialist import Specialist
-from app.audit import AuditStore
+from app.audit import AuditStore, InMemoryAuditStore
 from app.core.delegation import (
     Delegation,
     DelegationBuilder,
+    RevocationRegistry,
     InMemoryRevocationRegistry,
 )
 from app.core.identity import AgentIdentity
@@ -48,7 +49,7 @@ class AgentRuntime:
     gateway: SecurityGateway
     registry: ToolRegistry
     audit: AuditStore
-    revocations: InMemoryRevocationRegistry
+    revocations: RevocationRegistry
     provider: LLMProvider
     config: LLMConfig = field(default_factory=LLMConfig)
 
@@ -61,7 +62,7 @@ class AgentRuntime:
         chain_scopes: tuple[list[str], list[str], list[str]] | None = None,
         *,
         anchor: TrustAnchor | None = None,
-        revocations: InMemoryRevocationRegistry | None = None,
+        revocations: RevocationRegistry | None = None,
         audit: AuditStore | None = None,
     ) -> "AgentRuntime":
         """Create identities, issue the delegation chain, and wire the
@@ -97,8 +98,23 @@ class AgentRuntime:
         chain = [root, ab, bc]
 
         registry = registry or default_registry()
-        audit = audit or AuditStore()
-        revocations = revocations or InMemoryRevocationRegistry()
+        
+        # Persist generated agents and delegations
+        from app.repositories import AgentRepository, DelegationRepository
+        agent_repo = AgentRepository()
+        agent_repo.save(human)
+        agent_repo.save(a)
+        agent_repo.save(b)
+        agent_repo.save(c)
+        
+        del_repo = DelegationRepository()
+        del_repo.save(root)
+        del_repo.save(ab)
+        del_repo.save(bc)
+
+        from app.repositories import DbAuditStore, DbRevocationRegistry
+        audit = audit or DbAuditStore()
+        revocations = revocations or DbRevocationRegistry()
         gateway = SecurityGateway(
             anchor, registry, audit, revocation_registry=revocations
         )

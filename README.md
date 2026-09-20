@@ -49,6 +49,19 @@ the UI only renders what the backend decided.
 
 Developer API remains at **http://localhost:8000/docs** (Swagger).
 
+## Production Architecture (Phase 4)
+
+AgentPassport introduces a persistent relational database architecture (SQLAlchemy 2.x and Alembic) to transition from an in-memory MVP to a production-oriented system.
+
+- **What AgentPassport does**: Provides runtime authorization/security infrastructure for autonomous AI agents, ensuring that AI proposals are cryptographically verified before execution.
+- **Where persistence fits**: Agent identities, issued delegations, revocations, and audit events (authorization decisions) are persisted in a relational database, surviving application restarts.
+- **How authorization works**: The `SecurityGateway` evaluates every tool request against a delegation chain. The signed credential remains the authoritative security artifact. The verifier checks signatures, scope attenuation, expiration, and checks the database for revocation. Authorization remains a strict pre-execution gate; a denied request never executes the tool.
+- **How revocation works**: The `DbRevocationRegistry` checks the database for revocation records atomically during the verifier's checks. Revoked delegations immediately block authorization.
+- **Local development**: By default, local development uses a SQLite database (`agentpassport.db`) allowing developers to work seamlessly without a paid external database. 
+- **Database setup**: Run `alembic upgrade head` to initialize the database schema. Migrations are stored in the `alembic/` directory.
+- **Deployment Compatibility**: Cloudflare Workers Python architecture does not directly support standard synchronous TCP database drivers. For production deployments, you must isolate the persistence layer or use a supported connection pooler (e.g., Cloudflare Hyperdrive) and driver.
+- **Testing**: Run `pytest tests/` to execute the complete test suite. Tests are isolated and the test runner automatically handles database cleanup.
+
 ## Deployment (Cloudflare Workers)
 
 The verified MVP is deployed as two Cloudflare Workers — the architecture is unchanged,
