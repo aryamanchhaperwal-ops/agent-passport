@@ -25,7 +25,10 @@ needs it, is read from environment variables only.
 
 from __future__ import annotations
 
+import os
+
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from app.agents.runtime import AgentRuntime
@@ -76,6 +79,25 @@ def create_app(
             "authorization for AI-agent delegation. Local testbed only — "
             "no authentication, no persistence."
         ),
+    )
+
+    # The dashboard is deployed separately from the API. CORS is only
+    # transport plumbing; all authorization decisions remain inside the
+    # SecurityGateway and deterministic verifier.
+    allowed_origin_regex = os.getenv(
+        "FRONTEND_ORIGIN_REGEX",
+        r"^https://([a-z0-9-]+\\.)*(workers\\.dev|netlify\\.app)$",
+    )
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+        ],
+        allow_origin_regex=allowed_origin_regex,
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type"],
     )
 
     registry = registry or default_registry()
