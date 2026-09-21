@@ -57,3 +57,4 @@ def test_revocation_persistence():
         record = session.query(RevocationRecord).filter_by(delegation_id="test-delegation-id").first()
         assert record is not None
         assert record.reason == "compromised"
+

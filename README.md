@@ -62,6 +62,16 @@ AgentPassport introduces a persistent relational database architecture (SQLAlche
 - **Deployment Compatibility**: Cloudflare Workers Python architecture does not directly support standard synchronous TCP database drivers. For production deployments, you must isolate the persistence layer or use a supported connection pooler (e.g., Cloudflare Hyperdrive) and driver.
 - **Testing**: Run `pytest tests/` to execute the complete test suite. Tests are isolated and the test runner automatically handles database cleanup.
 
+## Identity, Organizations & Access Control (Phase 5)
+
+AgentPassport supports secure multi-tenant management where multiple organizations and users can safely manage their own AI agents without cross-contamination.
+
+- **Organizations & Users**: Persistent identities representing human tenants.
+- **Agent Ownership**: Cryptographic AI agent identities belong to specific organizations. 
+- **Human RBAC vs AI Authorization**: Human role-based access control (OWNER, ADMIN, MEMBER, VIEWER) determines *who* can manage agents and delegations via the REST API. The core cryptographic `SecurityGateway` determines *what* the agents can actually do at runtime. **RBAC NEVER bypasses the runtime AI authorization.**
+- **Tenant Isolation**: APIs strictly enforce organization boundaries, preventing cross-tenant access to agents, users, delegations, and audit records.
+- **Note**: The current authentication is a testbed placeholder mechanism (`X-User-Id` header). Production human authentication (e.g., OAuth, JWT) will be handled separately.
+
 ## Deployment (Cloudflare Workers)
 
 The verified MVP is deployed as two Cloudflare Workers — the architecture is unchanged,

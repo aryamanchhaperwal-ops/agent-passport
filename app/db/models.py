@@ -1,13 +1,53 @@
 import datetime
-from sqlalchemy import String, Boolean, DateTime, JSON, ForeignKey
+from sqlalchemy import String, Boolean, DateTime, JSON, ForeignKey, MetaData
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from app.db.database import Base
+
+convention = {
+  "ix": "ix_%(column_0_label)s",
+  "uq": "uq_%(table_name)s_%(column_0_name)s",
+  "ck": "ck_%(table_name)s_%(constraint_name)s",
+  "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+  "pk": "pk_%(table_name)s"
+}
+Base.metadata.naming_convention = convention
+
+class OrganizationRecord(Base):
+    __tablename__ = "organizations"
+    
+    id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    slug: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(32), default="ACTIVE")
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+class UserRecord(Base):
+    __tablename__ = "users"
+    
+    id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    organization_id: Mapped[str] = mapped_column(String(128), ForeignKey("organizations.id"), nullable=False, index=True)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    display_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[str] = mapped_column(String(32), default="VIEWER")
+    status: Mapped[str] = mapped_column(String(32), default="ACTIVE")
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
 class AgentRecord(Base):
     __tablename__ = "agents"
 
     id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    organization_id: Mapped[str | None] = mapped_column(String(128), ForeignKey("organizations.id"), nullable=True, index=True)
     name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     public_key: Mapped[str] = mapped_column(String(64), nullable=False)
     status: Mapped[str] = mapped_column(String(32), default="ACTIVE")
@@ -23,6 +63,7 @@ class DelegationRecord(Base):
     __tablename__ = "delegations"
 
     id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    organization_id: Mapped[str | None] = mapped_column(String(128), ForeignKey("organizations.id"), nullable=True, index=True)
     issuer_id: Mapped[str] = mapped_column(String(128), ForeignKey("agents.id"), nullable=False, index=True)
     subject_id: Mapped[str] = mapped_column(String(128), ForeignKey("agents.id"), nullable=False, index=True)
     parent_id: Mapped[str | None] = mapped_column(String(128), ForeignKey("delegations.id"), nullable=True, index=True)
@@ -65,3 +106,4 @@ class AuditRecord(Base):
     executed: Mapped[bool] = mapped_column(Boolean, default=False)
     delegation_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     detail: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+

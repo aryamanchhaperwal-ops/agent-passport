@@ -113,6 +113,9 @@ def create_app(
             "there must be exactly one authority"
         )
     gateway = runtime.gateway
+    
+    from app.api.routers import router as api_router
+    app.include_router(api_router, prefix="/api", tags=["Tenant API"])
 
     # ------------------------------------------------------------------
     # Phase 1 surface (unchanged)
