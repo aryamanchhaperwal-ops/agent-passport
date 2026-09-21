@@ -85,7 +85,7 @@ def test_viewer_cannot_manage_delegations(app_client):
     
     res = app_client.post(f"/api/delegations/{root.delegation_id}/revoke", headers={"X-User-Id": "user_a_viewer"})
     assert res.status_code == 403
-    assert res.json()["detail"] == "Insufficient permissions"
+    assert res.json()["detail"] == "Insufficient RBAC permissions"
 
 def test_tenant_isolation_revoke(app_client):
     from app.repositories.agent import DelegationRepository

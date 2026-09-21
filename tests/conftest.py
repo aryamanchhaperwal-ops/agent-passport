@@ -124,3 +124,8 @@ def expect_deny(outcome: VerificationOutcome, reason: DenyReason) -> None:
     assert outcome.reason == reason.value, (
         f"expected {reason.value}, got {outcome.reason} ({outcome.detail})"
     )
+
+@pytest.fixture(autouse=True)
+def dev_auth_mode(monkeypatch):
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "auth_mode", "dev")

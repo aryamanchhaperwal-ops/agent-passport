@@ -46,3 +46,4 @@ def has_permission(user_role: str, action: Action) -> bool:
         return action in ROLE_PERMISSIONS[role]
     except ValueError:
         return False
+

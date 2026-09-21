@@ -62,15 +62,15 @@ AgentPassport introduces a persistent relational database architecture (SQLAlche
 - **Deployment Compatibility**: Cloudflare Workers Python architecture does not directly support standard synchronous TCP database drivers. For production deployments, you must isolate the persistence layer or use a supported connection pooler (e.g., Cloudflare Hyperdrive) and driver.
 - **Testing**: Run `pytest tests/` to execute the complete test suite. Tests are isolated and the test runner automatically handles database cleanup.
 
-## Identity, Organizations & Access Control (Phase 5)
+## Production Authentication & API Credentials (Phase 6)
 
-AgentPassport supports secure multi-tenant management where multiple organizations and users can safely manage their own AI agents without cross-contamination.
+AgentPassport enforces a strict separation between **Human Management Authorization** and **AI Runtime Authorization**. 
 
-- **Organizations & Users**: Persistent identities representing human tenants.
-- **Agent Ownership**: Cryptographic AI agent identities belong to specific organizations. 
-- **Human RBAC vs AI Authorization**: Human role-based access control (OWNER, ADMIN, MEMBER, VIEWER) determines *who* can manage agents and delegations via the REST API. The core cryptographic `SecurityGateway` determines *what* the agents can actually do at runtime. **RBAC NEVER bypasses the runtime AI authorization.**
-- **Tenant Isolation**: APIs strictly enforce organization boundaries, preventing cross-tenant access to agents, users, delegations, and audit records.
-- **Note**: The current authentication is a testbed placeholder mechanism (`X-User-Id` header). Production human authentication (e.g., OAuth, JWT) will be handled separately.
+- **JWT/OIDC Foundation**: Built to integrate with external identity providers (OAuth 2.0 / OpenID Connect). `auth_mode="prod"` enforces strict JWT signature verification, expiration checks, and standard audience/issuer validation using JWKS.
+- **API Credentials**: Provides programmatic access via secure API keys (stored uniquely as bcrypt hashes). Includes prefix-based routing, key revocation, expiration limits, and explicit scope constraints.
+- **RBAC vs API Scopes**: API routes enforce both Human Role-Based Access Control (e.g. `OWNER`, `VIEWER`) and API Key scopes. **Crucially, no authentication mechanism or API credential can bypass the core `SecurityGateway`** for AI agent execution.
+- **Tenant Isolation**: All API actions are cryptographically pinned to the principal's organization boundaries, averting cross-tenant data leaks.
+- **Development Mode**: Configurable `auth_mode="dev"` allows quick local testing via the `X-User-Id` header, securely disabled in production setups.
 
 ## Deployment (Cloudflare Workers)
 

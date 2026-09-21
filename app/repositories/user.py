@@ -24,3 +24,4 @@ class UserRepository:
     def get_by_email(self, email: str) -> UserRecord | None:
         with SessionLocal() as session:
             return session.query(UserRecord).filter_by(email=email).first()
+

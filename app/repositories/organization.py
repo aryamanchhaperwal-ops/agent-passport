@@ -14,3 +14,4 @@ class OrganizationRepository:
     def get(self, id: str) -> OrganizationRecord | None:
         with SessionLocal() as session:
             return session.query(OrganizationRecord).filter_by(id=id).first()
+

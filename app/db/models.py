@@ -107,3 +107,18 @@ class AuditRecord(Base):
     delegation_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     detail: Mapped[str | None] = mapped_column(String(1024), nullable=True)
 
+class ApiKeyRecord(Base):
+    __tablename__ = "api_keys"
+
+    id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(128), ForeignKey("users.id"), nullable=False, index=True)
+    organization_id: Mapped[str] = mapped_column(String(128), ForeignKey("organizations.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    key_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    prefix: Mapped[str] = mapped_column(String(16), nullable=False)
+    scopes: Mapped[str] = mapped_column(JSON, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default="ACTIVE")
+    expires_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
