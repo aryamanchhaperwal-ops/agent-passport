@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
-    "build": "next build",
+    "build": "next build && echo \"/api/* ${BACKEND_URL:-http://127.0.0.1:8000}/:splat 200\" > out/_redirects",
     "start": "next start -p 3000"
   },
   "dependencies": {
