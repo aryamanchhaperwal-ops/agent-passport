@@ -104,3 +104,4 @@ def test_jwt_auth(app_client, monkeypatch):
     res = app_client.get("/api/organization", headers={"Authorization": f"Bearer {expired}"})
     assert res.status_code == 401
     assert "Invalid JWT" in res.json()["detail"]
+

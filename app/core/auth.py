@@ -43,3 +43,4 @@ def validate_jwt(token: str) -> AuthenticatedPrincipal:
         )
     except jwt.PyJWTError as e:
         raise ValueError(f"Invalid JWT: {str(e)}")
+

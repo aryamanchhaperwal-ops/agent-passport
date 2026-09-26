@@ -29,3 +29,4 @@ class ApiKeyRepository:
             if record:
                 record.status = "REVOKED"
                 session.commit()
+
